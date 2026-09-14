@@ -28,7 +28,7 @@ export function inspectProject(projectRoot: string = process.cwd()): string {
       try {
         pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
       } catch {
-        /* invalid json */
+        // Ignore invalid JSON
       }
     }
 

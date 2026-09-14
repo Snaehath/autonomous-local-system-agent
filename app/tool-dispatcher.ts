@@ -452,7 +452,7 @@ export function setupToolRegistry(mcpTools: McpToolSchema[] = []) {
     if (tool.type !== "function" || !("function" in tool)) continue;
     const name = tool.function.name;
     let category: any = "specialized";
-    if (["Read", "Write", "Delete", "Edit", "Tree", "Find", "Grep", "Glob"].includes(name))
+    if (["Read", "Write", "Edit", "Tree", "Find", "Grep"].includes(name))
       category = "filesystem";
     else if (["ExtractSymbols", "SummarizeFile", "ContextExtract", "SummarizeDiff"].includes(name))
       category = "compression";

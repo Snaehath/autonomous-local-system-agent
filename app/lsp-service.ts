@@ -278,7 +278,7 @@ export class LspService {
           });
         }
       } catch {
-        /* fallback to static locator */
+        // Fallback to static locator
       }
     }
 
@@ -327,7 +327,7 @@ export class LspService {
           });
         }
       } catch {
-        /* fallback to static scanner */
+        // Fallback to static scanner
       }
     }
 
@@ -373,7 +373,7 @@ export class LspService {
           return flattenSymbols(res);
         }
       } catch {
-        /* fallback */
+        // Fallback to static symbol extractor
       }
     }
 
@@ -408,7 +408,7 @@ export class LspService {
           }
         }
       } catch {
-        /* fallback */
+        // Fallback to static hover reader
       }
     }
 

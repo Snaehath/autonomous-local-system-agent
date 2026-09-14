@@ -88,7 +88,9 @@ export function matchesPattern(target: string, pattern: string): boolean {
   try {
     const regex = globToRegex(normalizedPattern);
     if (regex.test(normalizedTarget) || regex.test(baseName)) return true;
-  } catch { /* fallback */ }
+  } catch {
+    // Fallback to direct check
+  }
 
   // Direct check for sensitive files (e.g. .env, .env.local, .git)
   if (normalizedPattern.includes(".env") && (baseName.toLowerCase().startsWith(".env") || normalizedTarget.toLowerCase().includes(".env"))) {

@@ -18,7 +18,6 @@ import {
   formatTelemetryBox,
 } from "./telemetry.ts";
 import {
-  REGISTERED_MODELS,
   resolveModel,
   promptSelectModel,
   formatModelsCatalog,

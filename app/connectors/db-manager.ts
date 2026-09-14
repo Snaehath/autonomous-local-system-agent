@@ -22,11 +22,7 @@ export class DatabaseManager {
   private activeInfo: ConnectionTestResult | null = null;
   private activeUrlOrPath: string = "";
 
-  /**
-   * Resolve the actual connection URL for a saved profile.
-   * Prefers `envKey` (looks up from process.env) over the inline `url` field.
-   * Throws if neither is set or the env var is missing.
-   */
+  // Resolve connection URL for saved profile, preferring envKey over inline url
   private resolveConnectionUrl(entry: { envKey?: string; url?: string }): string {
     if (entry.envKey) {
       const resolved = process.env[entry.envKey];

@@ -61,7 +61,7 @@ export function scanUnusedDependencies(projectRoot: string = process.cwd()): str
     try {
       combinedCode += fs.readFileSync(f, "utf-8") + "\n";
     } catch {
-      /* ignore */
+      // Ignore unreadable file
     }
   }
 
@@ -101,7 +101,7 @@ export function scanDeadExports(projectRoot: string = process.cwd()): DeadSymbol
       fileContents.set(f, text);
       allProjectText += text + "\n";
     } catch {
-      /* ignore */
+      // Ignore unreadable file
     }
   }
 
@@ -163,7 +163,7 @@ export function scanOrphanFiles(projectRoot: string = process.cwd()): string[] {
     try {
       allImportsText += fs.readFileSync(f, "utf-8") + "\n";
     } catch {
-      /* ignore */
+      // Ignore unreadable file
     }
   }
 
@@ -211,7 +211,7 @@ export function scanStaleEnvVars(projectRoot: string = process.cwd()): string[] 
     try {
       allCode += fs.readFileSync(f, "utf-8") + "\n";
     } catch {
-      /* ignore */
+      // Ignore unreadable file
     }
   }
 
@@ -236,7 +236,7 @@ export function computeProjectEntropy(projectRoot: string = process.cwd()): Entr
     try {
       totalLines += fs.readFileSync(f, "utf-8").split(/\r?\n/).length;
     } catch {
-      /* ignore */
+      // Ignore unreadable file
     }
   }
 

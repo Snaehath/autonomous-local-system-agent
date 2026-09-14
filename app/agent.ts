@@ -1,12 +1,10 @@
 import OpenAI from "openai";
 import fs from "node:fs";
 import path from "node:path";
-import { exec } from "node:child_process";
 import { McpClient, type McpToolSchema } from "./mcp-client.ts";
 import { appendSessionMessage, trimContextMessages } from "./session.ts";
 import { loadAllSkills, matchSkill } from "./skills.ts";
 import { resolvePersona } from "./personas.ts";
-import { performWebSearch, formatSearchResults } from "./web-search.ts";
 import {
   loadPermissionConfig,
   evaluatePermission,
@@ -55,9 +53,7 @@ const TOOL_CALL_OBJ_RE =
 
 const MCP_CONFIG_PATH = path.resolve(process.cwd(), ".agents", "mcp.json");
 
-// ── Module-level singletons ───────────────────────────────────────────────────
-
-// OpenAI client singleton — recreated only when provider env vars change.
+// Module-level singletons
 let _llmInstance: OpenAI | null = null;
 let _llmKey = "";
 
@@ -72,7 +68,7 @@ function getLlmClient(): OpenAI {
   return _llmInstance;
 }
 
-// MCP client singleton map — child processes started once per process lifetime.
+// MCP client singleton map cached per process lifetime
 let _mcpClients: Map<string, McpClient> | null = null;
 
 async function getMcpClients(): Promise<Map<string, McpClient>> {
@@ -81,7 +77,7 @@ async function getMcpClients(): Promise<Map<string, McpClient>> {
   return _mcpClients;
 }
 
-/** Call this on exit / SIGINT so MCP child processes are cleaned up. */
+// Call on exit or SIGINT to clean up MCP child processes
 export async function closeMcpClients(): Promise<void> {
   if (!_mcpClients) return;
   for (const client of _mcpClients.values()) client.close();
@@ -266,7 +262,7 @@ export function extractEmbeddedToolCall(
     try {
       parsed = JSON.parse(raw);
     } catch {
-      /* fallback */
+      // Fall through to regex-based JSON fixing
     }
 
     if (!parsed) {
@@ -351,7 +347,7 @@ export function extractEmbeddedToolCall(
             },
           };
         } catch {
-          /* fall through */
+          // Continue searching candidate tool calls
         }
       }
     }

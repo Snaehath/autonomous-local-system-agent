@@ -179,7 +179,7 @@ export function executeGrep(
           }
         }
       } catch {
-        /* skip unreadable */
+        // Skip unreadable file
       }
     }
 

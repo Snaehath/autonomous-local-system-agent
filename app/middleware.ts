@@ -120,7 +120,7 @@ export class MiddlewarePipeline {
       try {
         fs.mkdirSync(customDir, { recursive: true });
       } catch {
-        /* ignore */
+        // Ignore directory creation errors
       }
       return 0;
     }
