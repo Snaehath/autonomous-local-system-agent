@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path from "node:path";
-import { getFullHardwareProfile } from "./environment.ts";
 
 export type CausalLayer = "infrastructure" | "database" | "network" | "application" | "concurrency";
 export type CausalNodeType = "root_cause" | "intermediate_effect" | "symptom" | "mitigation";

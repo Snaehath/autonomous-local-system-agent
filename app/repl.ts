@@ -18,11 +18,6 @@ import {
   formatTelemetryBox,
 } from "./telemetry.ts";
 import {
-  resolveModel,
-  promptSelectModel,
-  formatModelsCatalog,
-} from "./models.ts";
-import {
   createMarkdownStreamer,
   renderTerminalMarkdown,
 } from "./markdown.ts";

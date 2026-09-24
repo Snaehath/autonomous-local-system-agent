@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { execSync } from "node:child_process";
-import { loadRegisteredModels, formatModelsCatalog } from "./models.ts";
+import { getModelRuntime } from "../src/runtime/model-runtime.ts";
 import { loadPermissionConfig } from "./permissions.ts";
 import { loadHooksConfig } from "./hooks.ts";
 import { loadAllSkills } from "./skills.ts";
@@ -227,37 +227,76 @@ export function inspectProcess(): string {
   }
 }
 
-import { renderEnvironmentReport } from "./environment.ts";
+import { detectHardwareProfile } from "../src/hardware/detector.ts";
 
 // 5. Inspect Environment & Hardware Telemetry
 export function inspectEnvironment(): string {
   try {
-    return renderEnvironmentReport();
+    const p = detectHardwareProfile();
+    const runtime = getModelRuntime();
+    const active = runtime.resolveModel();
+    const gpuLine = p.gpu
+      ? `  • GPU                      : ${p.gpu.name} (${(p.gpu.totalVramMB / 1024).toFixed(1)} GB Total, ${(p.gpu.freeVramMB / 1024).toFixed(1)} GB Available)`
+      : "  • GPU                      : Integrated / CPU Only";
+
+    return [
+      `🌍 System & Environment Awareness Profile:`,
+      `  • Operating System         : ${p.os.type} ${p.os.release} (${p.os.platform} / ${p.os.arch})`,
+      `  • CPU                      : ${p.cpu.model} (${p.cpu.cores} logical cores)`,
+      `  • System Memory            : ${p.memory.totalGB} GB RAM (${p.memory.freeGB} GB Free, ${p.memory.usagePercent}% used)`,
+      gpuLine,
+      `  • Runtime                  : ${p.runtime.name} ${p.runtime.version} (PID: ${p.runtime.pid}, RSS: ${p.runtime.memoryRssMB} MB)`,
+      `  • Network Status           : ${p.network.isOnline ? `Online (${p.network.primaryIp})` : "Offline"}`,
+      `\n💡 Active Model Selection:`,
+      `  • Active Resolved Model    : ⚡ ${active.displayName} (${active.id})`,
+      `  • Selection Strategy       : ${runtime.getActiveModelId() === "auto" ? "Dynamic Hardware & Capability Aware (Auto)" : "Pinned User Selection"}`,
+    ].join("\n");
   } catch (e: any) {
     return `Error inspecting environment: ${e.message}`;
+  }
+}
+
+// Format models catalog using ModelRuntime
+function formatModelsCatalog(): string {
+  try {
+    const runtime = getModelRuntime();
+    const models = runtime.listModels();
+    if (models.length === 0) return "No models discovered. Ensure Ollama is running.";
+    const active = runtime.resolveModel();
+    const lines = [
+      `🤖 Discovered Models (${models.length}):`,
+      ...models.map((m) => {
+        const activeTag = m.id === active.id ? " [ACTIVE]" : "";
+        const visionTag = m.capabilities.vision ? " [📷 Vision]" : "";
+        return `  • ${m.displayName} (${m.id})${activeTag}${visionTag} [${m.aliases.join(", ")}]`;
+      }),
+    ];
+    return lines.join("\n");
+  } catch (e: any) {
+    return `Error discovering models: ${e.message}`;
   }
 }
 
 // 6. Inspect Agent Configuration
 export function inspectConfig(): string {
   try {
-    const models = loadRegisteredModels();
+    const runtime = getModelRuntime();
+    const models = runtime.listModels();
     const perms = loadPermissionConfig();
     const hooks = loadHooksConfig();
     const skills = loadAllSkills();
 
-    const activeModel = process.env.MODEL || (models[0]?.id ?? "default");
+    const activeModel = runtime.getActiveModelId();
     const modelDetails = models.map((m) => {
-      const isVision = (m.capabilities || []).some((c: string) => c.toLowerCase().includes("vision"));
-      const tag = isVision ? " [📷 Vision]" : "";
-      return `${m.name} (${m.aliases?.[0] || m.id})${tag}`;
+      const tag = m.capabilities.vision ? " [📷 Vision]" : "";
+      return `${m.displayName} (${m.aliases[0] || m.id})${tag}`;
     }).join(", ");
 
     return [
       `🛠️ Agent Configuration Introspection`,
       `  • Active Model             : ${activeModel}`,
-      `  • Registered Models (${models.length})  : ${modelDetails}`,
-      `  • Vision Capable Models    : ${models.filter((m) => (m.capabilities || []).some((c: string) => c.toLowerCase().includes("vision"))).map((m) => m.aliases?.[0] || m.id).join(", ")}`,
+      `  • Registered Models (${models.length})  : ${modelDetails || "None"}`,
+      `  • Vision Capable Models    : ${models.filter((m) => m.capabilities.vision).map((m) => m.aliases[0] || m.id).join(", ") || "None"}`,
       `  • Permission Rules (${perms.rules.length})   : Default Action: ${perms.defaultAction}`,
       `  • Registered Skills (${skills.length})  : ${skills.map((s) => s.name).join(", ") || "None"}`,
       `  • Pre-Tool Hooks           : ${hooks.hooks.filter((h) => h.event === "pre_tool_call").length} configured`,

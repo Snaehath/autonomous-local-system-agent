@@ -15,10 +15,6 @@ import {
   aggregateSessionTelemetry,
   formatTelemetryBox,
 } from "./telemetry.ts";
-import {
-  REGISTERED_MODELS,
-  determineActiveModel,
-} from "./models.ts";
 import { runReplMode, colors } from "./repl.ts";
 import { runServerMode } from "./server.ts";
 import {

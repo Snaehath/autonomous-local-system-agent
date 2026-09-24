@@ -11,11 +11,6 @@ import {
   promptUserPermission,
   type PermissionAction,
 } from "./permissions.ts";
-import {
-  resolveModel,
-  modelSupportsVision,
-  loadRegisteredModels,
-} from "./models.ts";
 import { lspService } from "./lsp-service.ts";
 import { executeHooks, loadHooksConfig } from "./hooks.ts";
 import {
