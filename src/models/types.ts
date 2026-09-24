@@ -3,9 +3,13 @@ export interface ModelCapabilities {
   text: boolean;
   vision: boolean;
   tools: boolean;
+  thinking: boolean;
   reasoning: boolean;
   maxContextLength: number;
 }
+
+// Memory source classification
+export type MemoryEstimateSource = "provider" | "heuristic" | "measured" | "unknown";
 
 // Normalized model metadata
 export interface ModelMetadata {
@@ -15,6 +19,8 @@ export interface ModelMetadata {
   parameterSize?: string;
   quantization?: string;
   vramEstimatedMb?: number;
+  estimatedMemoryMb?: number;
+  memoryEstimateSource?: MemoryEstimateSource;
   capabilities: ModelCapabilities;
   curatedRoles?: Array<"coding" | "reasoning" | "agent" | "general" | "vision">;
   aliases: string[];
@@ -28,4 +34,27 @@ export interface ModelRoutingRequest {
   minContextTokens?: number;
   strategy?: "auto" | "pinned" | "fastest" | "smallest" | "vision" | "reasoning";
   userSpecifiedModel?: string;
+}
+
+// Single candidate evaluation trace in routing decisions
+export interface ModelCandidateEvaluation {
+  modelId: string;
+  displayName: string;
+  accepted: boolean;
+  reasons: string[];
+}
+
+// Trace of a routing decision for explainability and diagnostics
+export interface ModelSelectionTrace {
+  timestamp: number;
+  strategy: string;
+  taskRequirements: {
+    requiresVision?: boolean;
+    requiresTools?: boolean;
+    requiresReasoning?: boolean;
+    minContextTokens?: number;
+  };
+  candidates: ModelCandidateEvaluation[];
+  selectedModelId: string;
+  selectionReason: string;
 }

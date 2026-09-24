@@ -89,7 +89,7 @@ export class OpenAICompatibleProvider implements LLMProvider {
       };
       if (request.temperature !== undefined) payload.temperature = request.temperature;
 
-      const stream = await this.client.chat.completions.create(payload);
+      const stream = (await this.client.chat.completions.create(payload)) as unknown as AsyncIterable<any>;
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta;
         yield {

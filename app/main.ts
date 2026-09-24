@@ -110,11 +110,12 @@ async function main() {
     }
   }
 
-  // Resolve active model following precedence: CLI flag > .agents/models.json > .env > default
+  // Resolve active model from CLI flag if provided
   const modelFlagIdx = args.findIndex((a) => a === "--model" || a === "-m");
   const cliModelArg = modelFlagIdx !== -1 ? args[modelFlagIdx + 1] : undefined;
-  const activeModelId = determineActiveModel(cliModelArg);
-  process.env.MODEL = activeModelId;
+  if (cliModelArg && cliModelArg.trim()) {
+    process.env.MODEL = cliModelArg.trim();
+  }
 
   // --thinking / -t / --think / -think flag (low, medium, high, off)
   const thinkingFlagIdx = args.findIndex(
@@ -174,22 +175,21 @@ async function main() {
 
   // --models / --list-models
   if (args.includes("--models") || args.includes("--list-models")) {
-    const currentId = process.env.MODEL ?? activeModelId;
-    console.log("Available AI Models:\n" + "─".repeat(68));
-    for (const m of REGISTERED_MODELS) {
-      const isActive =
-        m.id.toLowerCase() === currentId.toLowerCase() ||
-        Boolean(m.aliases?.some((a) => a.toLowerCase() === currentId.toLowerCase()));
+    const { getModelRuntime } = await import("../src/runtime/model-runtime.ts");
+    const runtime = getModelRuntime();
+    const models = runtime.listModels();
+    const active = runtime.resolveModel();
+    console.log("Discovered AI Models:\n" + "─".repeat(68));
+    for (const m of models) {
+      const isActive = m.id === active.id;
       const badge = isActive ? " [ACTIVE]" : "";
-      console.log(`• ${m.name}${badge}`);
-      console.log(`  ID: ${m.id} | Aliases: ${(m.aliases ?? []).join(", ")}`);
-      console.log(
-        `  Creator: ${m.creator} | License: ${m.license} | ${m.vramUsage}`,
-      );
-      console.log(`  Good at: ${m.description}`);
-      console.log(`  Capabilities: ${m.capabilities.join(" · ")}\n`);
+      console.log(`• ${m.displayName}${badge}`);
+      console.log(`  ID: ${m.id} | Aliases: ${m.aliases.join(", ")}`);
+      console.log(`  Provider: ${m.provider} | Parameter Size: ${m.parameterSize || "Unknown"}`);
+      const caps = Object.entries(m.capabilities).filter(([_, v]) => v).map(([k]) => k).join(" · ");
+      console.log(`  Capabilities: ${caps}\n`);
     }
-    console.log("Switch model with: -m granite, -m qwen, -m gemma, -m ministral, or -m lfm");
+    console.log("Switch model with: -m <alias> or in REPL with /model <alias>");
     return;
   }
 

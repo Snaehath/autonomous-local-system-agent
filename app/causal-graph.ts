@@ -181,7 +181,6 @@ const CAUSAL_PATTERNS: Array<{
 // Perform Causal Failure & Root-Cause Analysis
 export function analyzeCausalGraph(queryOrSymptom: string, contextSnippet?: string): CausalAnalysisResult {
   const query = queryOrSymptom.toLowerCase().trim();
-  const hw = getFullHardwareProfile();
 
   // Find matching causal pattern or generate generic causal chain
   let pattern = CAUSAL_PATTERNS.find((p) => p.match.test(query));

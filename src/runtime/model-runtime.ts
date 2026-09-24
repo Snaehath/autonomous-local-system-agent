@@ -65,6 +65,20 @@ export class ModelRuntime {
     return this.router.select(effectiveReq);
   }
 
+  // Explain routing decision with full candidate traces
+  explainSelection(req: ModelRoutingRequest = {}) {
+    const effectiveReq: ModelRoutingRequest = {
+      ...req,
+      userSpecifiedModel: req.userSpecifiedModel || this.activeModelOverride,
+    };
+    return this.router.explain(effectiveReq);
+  }
+
+  // Retrieve the trace of the most recent selection decision
+  getLastSelectionTrace() {
+    return this.router.getLastTrace();
+  }
+
   // Get matching provider instance for a model
   getProvider(model: ModelMetadata): LLMProvider {
     const provider = this.providers.get(model.provider);

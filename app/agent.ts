@@ -39,6 +39,7 @@ import {
 } from "./tool-dispatcher.ts";
 import { dbManager } from "./connectors/db-manager.ts";
 import { getModelRuntime } from "../src/runtime/model-runtime.ts";
+import type { ModelMetadata } from "../src/models/types.ts";
 
 // Constants
 const PLACEHOLDER_RE =
@@ -456,8 +457,8 @@ function encodeLocalImageToDataUrl(filePath: string): string | null {
 // System prompt builder with full multi-model awareness
 export function buildAgentSystemPrompt(options: {
   agentName: string;
-  activeModel: ReturnType<typeof resolveModel>;
-  registeredModels: ReturnType<typeof loadRegisteredModels>;
+  activeModel: ModelMetadata;
+  registeredModels: ModelMetadata[];
   mcpTools: McpToolSchema[];
   skills: any[];
   activeSkill?: any;
@@ -488,17 +489,15 @@ export function buildAgentSystemPrompt(options: {
     ? `\n\n--- ACTIVE PERSONA: ${activePersona.name} ---\n${activePersona.systemPrompt}\n----------------------------------`
     : "";
 
-  const activeHasVision = (activeModel.capabilities || []).some((c) =>
-    c.toLowerCase().includes("vision") || c.toLowerCase().includes("image"),
-  );
+  const activeHasVision = activeModel.capabilities.vision;
 
   const modelRosterText = registeredModels
-    .map((m) => `${m.id} (${m.name})`)
+    .map((m) => `${m.id} (${m.displayName})`)
     .join(", ");
 
   return `You are ${agentName}, an Autonomous Local System Agent running in a local workspace.
 
-Active Model: ${activeModel.name} (${activeModel.id}) | Vision: ${activeHasVision ? "YES" : "NO"}
+Active Model: ${activeModel.displayName} (${activeModel.id}) | Vision: ${activeHasVision ? "YES" : "NO"}
 Available Local Models: ${modelRosterText} (switch anytime with "/model <id>")
 
 Core Capabilities & Tools:
@@ -543,10 +542,9 @@ export async function runAgentMode(
       ? modelRuntime.resolveModel({ requiresVision: hasImages })
       : (modelRuntime.registry.get(rawModel) || modelRuntime.resolveModel({ requiresVision: hasImages }));
 
-  const model = resolvedModelMetadata?.id || (rawModel !== "auto" ? rawModel : "granite4.2:3b");
-  const modelInfo = resolveModel(model);
+  const model = resolvedModelMetadata.id;
   const agentName =
-    modelInfo.name || resolvedModelMetadata?.displayName || process.env.AGENT_NAME || "Autonomous Local System Agent";
+    resolvedModelMetadata.displayName || process.env.AGENT_NAME || "Autonomous Local System Agent";
 
   // Discover and merge MCP tools
   const mcpClients = await getMcpClients();
@@ -639,10 +637,10 @@ export async function runAgentMode(
   }
 
   // System prompt
-  const registeredModels = loadRegisteredModels();
+  const registeredModels = modelRuntime.listModels();
   const systemPromptContent = buildAgentSystemPrompt({
     agentName,
-    activeModel: modelInfo,
+    activeModel: resolvedModelMetadata,
     registeredModels,
     mcpTools,
     skills,
@@ -678,9 +676,9 @@ export async function runAgentMode(
   }
 
   if (contentBlocks.length > 1) {
-    if (!modelSupportsVision(model)) {
+    if (!resolvedModelMetadata.capabilities.vision) {
       process.stdout.write(
-        `  ${colors.dim("↳")} ${colors.boldYellow("⚠️ Note:")} ${colors.gray(`${modelInfo.name} may not support vision. For best image analysis, switch to: gemma, qwen3.5, or ministral.\n`)}`,
+        `  ${colors.dim("↳")} ${colors.boldYellow("⚠️ Note:")} ${colors.gray(`${resolvedModelMetadata.displayName} may not support vision. For best image analysis, switch to a vision-capable model.\n`)}`,
       );
     } else {
       process.stdout.write(

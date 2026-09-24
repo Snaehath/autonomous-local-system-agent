@@ -354,38 +354,6 @@ export async function runReplMode(options: {
           break;
         }
 
-        case "/models": {
-          const rawArg = rest[0]?.toLowerCase().trim();
-          if (rawArg && rawArg !== "list") {
-            const targetModel = resolveModel(rawArg);
-            process.env.MODEL = targetModel.id;
-            console.log(renderModelBanner(targetModel.id));
-          } else {
-            console.log("\n" + formatModelsCatalog() + "\n");
-          }
-          break;
-        }
-
-        case "/model": {
-          const rawArg = rest[0];
-          if (rawArg) {
-            if (rawArg.toLowerCase() === "list") {
-              console.log("\n" + formatModelsCatalog() + "\n");
-            } else {
-              const targetModel = resolveModel(rawArg);
-              process.env.MODEL = targetModel.id;
-              console.log(renderModelBanner(targetModel.id));
-            }
-          } else {
-            rl.pause();
-            const chosen = await promptSelectModel(currentModel());
-            process.env.MODEL = chosen.id;
-            rl.resume();
-            console.log(renderModelBanner(chosen.id));
-          }
-          break;
-        }
-
         case "/thinking": {
           const arg = rest[0]?.toLowerCase().trim();
           if (arg && ["low", "medium", "high", "off", "none"].includes(arg)) {

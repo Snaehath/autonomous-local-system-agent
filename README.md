@@ -286,29 +286,35 @@ The codebase follows a strict separation of concerns where **Model ≠ Provider 
                            │
                            ▼
 ┌────────────────────────────────────────────────────────┐
-│                     Agent Runtime                      │
+│                      Agent Runtime                     │
 │   (Lifecycle · Middleware · Tools · Context · Eval)    │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│                      ModelRuntime                      │
+│        (Unified Model Facade · Selection Traces)       │
 └──────────────┬──────────────────────────┬──────────────┘
                │                          │
-               ▼                          │
-┌─────────────────────────────┐           │
-│        Model Router         │           │
-│ (Capability · HW · Auto/Pin)│           │
-└──────────────┬──────────────┘           │
-               │                          │
-               ▼                          │
-┌─────────────────────────────┐           │
-│       Model Registry        │           │
-│   (Discovered Capabilities) │           │
-└──────────────┬──────────────┘           │
-               │                          │
                ▼                          ▼
-┌────────────────────────────────────────────────────────┐
-│                    LLMProvider API                     │
-│         [Ollama]      [OpenAI-Compat]      [Mock]      │
-└────────────────────────────────────────────────────────┘
+┌─────────────────────────────┐  ┌───────────────────────┐
+│        Model Router         │  │   Provider Registry   │
+│ (Capability · HW · Auto/Pin)│  │ (Ollama, OpenAI, Mock)│
+└──────────────┬──────────────┘  └───────────────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│       Model Registry        │
+│   (Dynamic Discovered Caps) │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│    Ollama / API Discovery   │
+└─────────────────────────────┘
 ```
 
+- **`src/runtime/model-runtime.ts`**: Unified facade coordinating model selection, explainable routing traces (`/model why`), and provider dispatch.
 - **`src/config/`**: Centralized configuration loader; reads environment variables and config files once.
 - **`src/providers/`**: Uniform provider interface (`LLMProvider`) supporting Ollama, OpenAI-compatible backends, and offline mock clients.
 - **`src/models/`**: Dynamic model discovery from provider APIs, technical capability detection, and memory-aware model routing.
@@ -317,16 +323,22 @@ The codebase follows a strict separation of concerns where **Model ≠ Provider 
 
 ---
 
-## 🧪 Comprehensive Unit Test Suite
+## 🧪 Comprehensive Quality Gate & Unit Test Suite
 
-The project includes an offline unit test harness powered by Bun's built-in test runner:
+The project includes an offline test harness powered by Bun's built-in test runner and TypeScript compiler:
 
 ```bash
-# Run all unit tests
+# Run full development gate (typecheck + test suite)
+bun run check
+
+# Typecheck independently
+bun run typecheck
+
+# Run all unit tests offline
 bun test
 
-# Run tests in watch mode
-bun run test:watch
+# Run tests with code coverage
+bun run coverage
 ```
 
 The test suite covers:
@@ -334,8 +346,8 @@ The test suite covers:
 - **Permission Evaluator**: Globstar matching, sensitive file protection, command substring checks.
 - **Tool Execution & Sandboxing**: File discovery, mathematical evaluation, code injection blocking.
 - **Context Engine**: Ast symbol extraction and proactive token history compaction.
-- **Provider & Model Router**: Capability detection (vision/reasoning), VRAM estimation, offline provider streaming.
-- **Command Registry Plugins**: Slash command dispatch, `/model auto`, and `/models --refresh`.
+- **Provider & Model Router**: Capability detection (vision/reasoning/thinking), deterministic ranking, strict capability error handling, explainability traces.
+- **Command Registry Plugins**: Slash command dispatch, `/model auto`, `/model why`, and `/models --refresh`.
 
 ---
 

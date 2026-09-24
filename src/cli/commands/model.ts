@@ -20,8 +20,37 @@ export const modelCommand: SlashCommandPlugin = {
             .filter(([_, v]) => v === true)
             .map(([k]) => k)
             .join(" · ")}\n` +
-          `\nSwitch with: /model auto  or  /model <alias> (e.g. /model qwen)\n\n`,
+          `\nUsage:\n` +
+          `• /model why   - Explain why current model was chosen\n` +
+          `• /model auto  - Enable dynamic capability & hardware routing\n` +
+          `• /model <id>  - Pin to a specific model alias or ID\n\n`,
       );
+      return;
+    }
+
+    if (target.toLowerCase() === "why") {
+      const trace = ctx.modelRuntime.getLastSelectionTrace() || ctx.modelRuntime.explainSelection();
+      const resolved = ctx.modelRuntime.resolveModel();
+
+      ctx.stdout("\nModel Selection Explanation\n" + "─".repeat(68) + "\n");
+      ctx.stdout(`Strategy: ${trace.strategy}\n`);
+      ctx.stdout(
+        `Requirements: Vision: ${trace.taskRequirements.requiresVision ? "YES" : "no"} | ` +
+          `Tools: ${trace.taskRequirements.requiresTools ? "YES" : "no"} | ` +
+          `Reasoning: ${trace.taskRequirements.requiresReasoning ? "YES" : "no"}\n\n`,
+      );
+
+      ctx.stdout("Candidate Evaluation:\n");
+      for (const c of trace.candidates) {
+        const mark = c.accepted ? "✓" : "✗";
+        ctx.stdout(`  ${mark} ${c.displayName} (${c.modelId})\n`);
+        for (const r of c.reasons) {
+          ctx.stdout(`    • ${r}\n`);
+        }
+      }
+
+      ctx.stdout(`\nSelected Model: ${resolved.displayName} (${resolved.id})\n`);
+      ctx.stdout(`Reason: ${trace.selectionReason}\n\n`);
       return;
     }
 

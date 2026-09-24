@@ -89,6 +89,7 @@ export function detectCapabilities(
     text: true,
     vision: hasVision,
     tools: hasTools,
+    thinking: hasReasoning,
     reasoning: hasReasoning,
     maxContextLength: contextLength,
   };
@@ -118,6 +119,8 @@ export function normalizeOllamaModel(
     parameterSize: paramSize,
     quantization: quant,
     vramEstimatedMb: vramMb,
+    estimatedMemoryMb: vramMb,
+    memoryEstimateSource: "heuristic",
     capabilities,
     curatedRoles,
     aliases,
