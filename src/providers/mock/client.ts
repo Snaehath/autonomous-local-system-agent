@@ -12,24 +12,28 @@ export class MockProvider implements LLMProvider {
 
   private queuedResponses: Array<Partial<ChatCompletionResponse>> = [];
 
-  constructor(
-    private availableModels: ProviderModelListing[] = [
-      {
-        id: "mock-coding:3b",
-        name: "Mock Coding 3B",
-        parameterSize: "3B",
-        quantization: "Q4_K_M",
-        sizeBytes: 2.2 * 1024 * 1024 * 1024,
-      },
-      {
-        id: "mock-vision:4b",
-        name: "Mock Vision 4B",
-        parameterSize: "4B",
-        quantization: "Q4_K_M",
-        sizeBytes: 3.4 * 1024 * 1024 * 1024,
-      },
-    ],
-  ) {}
+  private availableModels: ProviderModelListing[];
+
+  constructor(availableModels?: ProviderModelListing[]) {
+    this.availableModels = availableModels
+      ? [...availableModels]
+      : [
+          {
+            id: "mock-coding:3b",
+            name: "Mock Coding 3B",
+            parameterSize: "3B",
+            quantization: "Q4_K_M",
+            sizeBytes: 2.2 * 1024 * 1024 * 1024,
+          },
+          {
+            id: "mock-vision:4b",
+            name: "Mock Vision 4B",
+            parameterSize: "4B",
+            quantization: "Q4_K_M",
+            sizeBytes: 3.4 * 1024 * 1024 * 1024,
+          },
+        ];
+  }
 
   enqueueResponse(res: Partial<ChatCompletionResponse>): void {
     this.queuedResponses.push(res);

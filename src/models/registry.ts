@@ -38,17 +38,28 @@ export class ModelRegistry {
           const metadata: ModelMetadata =
             provider.id === "ollama"
               ? normalizeOllamaModel(raw, inspectData)
-              : {
-                  id: raw.id,
-                  displayName: raw.name || raw.id,
-                  provider: provider.id as any,
-                  parameterSize: raw.parameterSize || "Unknown",
-                  quantization: raw.quantization || "Unknown",
-                  vramEstimatedMb: estimateVramMb(raw.parameterSize, raw.quantization),
-                  capabilities: detectCapabilities(raw.id, inspectData),
-                  curatedRoles: ["general"],
-                  aliases: generateModelAliases(raw.id),
-                };
+              : (() => {
+                  const caps = detectCapabilities(raw.id, inspectData);
+                  const memMb = estimateVramMb(raw.parameterSize, raw.quantization);
+                  const curatedRoles: Array<"coding" | "reasoning" | "agent" | "general" | "vision"> = ["general"];
+                  if (caps.reasoning || caps.thinking) curatedRoles.push("reasoning");
+                  if (caps.vision) curatedRoles.push("vision");
+                  if (/granite|qwen|fable|mistral|code|coding/i.test(raw.id)) curatedRoles.push("coding", "agent");
+
+                  return {
+                    id: raw.id,
+                    displayName: raw.name || raw.id,
+                    provider: provider.id as any,
+                    parameterSize: raw.parameterSize || "Unknown",
+                    quantization: raw.quantization || "Unknown",
+                    vramEstimatedMb: memMb,
+                    estimatedMemoryMb: memMb,
+                    memoryEstimateSource: "heuristic" as const,
+                    capabilities: caps,
+                    curatedRoles,
+                    aliases: generateModelAliases(raw.id),
+                  };
+                })();
 
           this.register(metadata);
         }

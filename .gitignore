@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 tests/
+.github/
 
 # Environment variables & secrets
 .env
@@ -11,5 +12,6 @@ tests/
 .agents/
 .claude/
 *.log
+ARCHITECTURE.md
 
 # Temporary test files

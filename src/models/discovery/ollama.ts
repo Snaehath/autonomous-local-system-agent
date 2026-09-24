@@ -110,7 +110,7 @@ export function normalizeOllamaModel(
   const curatedRoles: Array<"coding" | "reasoning" | "agent" | "general" | "vision"> = ["general"];
   if (capabilities.reasoning) curatedRoles.push("reasoning");
   if (capabilities.vision) curatedRoles.push("vision");
-  if (/granite|qwen|fable|mistral|code/i.test(id)) curatedRoles.push("coding", "agent");
+  if (/granite|qwen|fable|mistral|code|coding/i.test(id)) curatedRoles.push("coding", "agent");
 
   return {
     id,

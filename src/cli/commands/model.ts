@@ -21,10 +21,27 @@ export const modelCommand: SlashCommandPlugin = {
             .map(([k]) => k)
             .join(" · ")}\n` +
           `\nUsage:\n` +
-          `• /model why   - Explain why current model was chosen\n` +
-          `• /model auto  - Enable dynamic capability & hardware routing\n` +
-          `• /model <id>  - Pin to a specific model alias or ID\n\n`,
+          `• /model status - Display active runtime and capability details\n` +
+          `• /model why    - Explain why current model was chosen\n` +
+          `• /model auto   - Enable dynamic capability & hardware routing\n` +
+          `• /model <id>   - Pin to a specific model alias or ID\n\n`,
       );
+      return;
+    }
+
+    if (target.toLowerCase() === "status") {
+      const activeId = ctx.modelRuntime.getActiveModelId();
+      const resolved = ctx.modelRuntime.resolveModel();
+      ctx.stdout("\nCurrent Model Runtime Status\n" + "─".repeat(68) + "\n");
+      ctx.stdout(`• Active Model : ${resolved.displayName} (${resolved.id})\n`);
+      ctx.stdout(`• Selection    : ${activeId === "auto" ? "auto (dynamic capability & hardware routing)" : `pinned (${activeId})`}\n`);
+      ctx.stdout(`• Provider     : ${resolved.provider}\n`);
+      ctx.stdout(`• Parameter Sz : ${resolved.parameterSize || "Unknown"}\n`);
+      ctx.stdout(`• Context Limit: ${resolved.capabilities.maxContextLength.toLocaleString()} tokens\n`);
+      ctx.stdout(`• Memory Est.  : ~${((resolved.estimatedMemoryMb || resolved.vramEstimatedMb || 3000) / 1024).toFixed(1)} GB\n`);
+      ctx.stdout(`• Vision       : ${resolved.capabilities.vision ? "YES" : "no"}\n`);
+      ctx.stdout(`• Tool Calling : ${resolved.capabilities.tools ? "YES" : "no"}\n`);
+      ctx.stdout(`• Thinking     : ${resolved.capabilities.thinking ? "YES" : "no"}\n\n`);
       return;
     }
 
