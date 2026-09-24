@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as readline from "node:readline";
+import { getModelRuntime } from "../src/runtime/model-runtime.ts";
 
 // Constants
 export const MODELS_CONFIG_PATH = path.resolve(
@@ -95,8 +96,30 @@ const FALLBACK_MODELS: ModelInfo[] = [
   },
 ];
 
-// Load models dynamically from .agents/models.json with full normalization
+// Load models dynamically from ModelRuntime or .agents/models.json
 export function loadRegisteredModels(): ModelInfo[] {
+  try {
+    const runtime = getModelRuntime();
+    const runtimeModels = runtime.listModels();
+    if (runtimeModels.length > 0) {
+      return runtimeModels.map((m) => ({
+        id: m.id,
+        name: m.displayName || m.id,
+        creator: m.provider === "ollama" ? "Ollama Local" : m.provider,
+        license: "Local / Installed",
+        alias: m.aliases[0] || m.id,
+        aliases: m.aliases,
+        description: `Local ${m.parameterSize || ""} ${m.quantization || ""} model`,
+        capabilities: Object.entries(m.capabilities)
+          .filter(([_, v]) => v === true)
+          .map(([k]) => k.toUpperCase()),
+        vramUsage: `~${(m.vramEstimatedMb ? m.vramEstimatedMb / 1024 : 3).toFixed(1)} GB VRAM`,
+      }));
+    }
+  } catch {
+    // ModelRuntime not yet initialized
+  }
+
   if (fs.existsSync(MODELS_CONFIG_PATH)) {
     try {
       const raw = fs.readFileSync(MODELS_CONFIG_PATH, "utf-8");

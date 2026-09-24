@@ -7,9 +7,11 @@
 ## 🌟 Highlights & Features
 
 ### ⚡ 1. Local Multi-Model Engine & Environment Awareness
-- **Dynamic Model Switching**: Switch models on the fly with the arrow-key interactive picker (`/model`), instant alias switch (`/model fable`, `/model qwen3.5`, `/model gemma`, `/model ministral`, `/model granite`, `/model lfm`), or CLI flags (`-m <alias>`).
+- **Dynamic Capability & VRAM Auto-Routing**: Run in `/model auto` mode or launch with `-m auto`. The runtime analyzes task requirements (e.g. image inputs automatically require vision) and matches against available GPU VRAM to pick the optimal model without hardcoding.
+- **Provider & Model Decoupling**: Models are discovered dynamically from live providers (Ollama `/api/tags`, OpenAI-compatible). Pulling a new model (`ollama pull <name>`) is immediately discovered via `/models --refresh` without code modifications.
+- **Dynamic Model Switching**: Switch models on the fly with the arrow-key interactive picker (`/model`), instant alias switch (`/model auto`, `/model fable`, `/model qwen3.5`, `/model gemma`, `/model ministral`, `/model granite`, `/model lfm`), or CLI flags (`-m <alias>`).
 - **Installed Local Model Knowledge**: The agent possesses full runtime awareness of all registered local models in the environment. When asked for recommendations, it identifies the best model from your local roster rather than hallucinating unavailable cloud services.
-- **Model Catalog (`/models`)**: Type `/models` to inspect all installed local models, their memory footprints, vision capabilities, and switch shortcuts.
+- **Model Catalog (`/models`)**: Type `/models` to inspect all installed local models, their memory footprints, vision capabilities, and switch shortcuts. Use `/models --refresh` to re-query Ollama.
 - **Dynamic Context Budgeting**: Queries Ollama's `/api/show` in real-time to track architectural limits (e.g. 131k for Granite) vs. active session context (`num_ctx`).
 - **Bespoke ASCII Art Identity**: Every model displays a custom ASCII art identity banner on startup and model switch.
 
@@ -270,6 +272,70 @@ bun link
 cd /path/to/my-react-app
 ai-agent -m granite -p "Analyze this codebase and list the main components"
 ```
+
+---
+
+## 🏗️ Platform & Engine Architecture
+
+The codebase follows a strict separation of concerns where **Model ≠ Provider ≠ Model Selection ≠ Agent Runtime**:
+
+```text
+┌────────────────────────────────────────────────────────┐
+│                      CLI / REPL                        │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│                     Agent Runtime                      │
+│   (Lifecycle · Middleware · Tools · Context · Eval)    │
+└──────────────┬──────────────────────────┬──────────────┘
+               │                          │
+               ▼                          │
+┌─────────────────────────────┐           │
+│        Model Router         │           │
+│ (Capability · HW · Auto/Pin)│           │
+└──────────────┬──────────────┘           │
+               │                          │
+               ▼                          │
+┌─────────────────────────────┐           │
+│       Model Registry        │           │
+│   (Discovered Capabilities) │           │
+└──────────────┬──────────────┘           │
+               │                          │
+               ▼                          ▼
+┌────────────────────────────────────────────────────────┐
+│                    LLMProvider API                     │
+│         [Ollama]      [OpenAI-Compat]      [Mock]      │
+└────────────────────────────────────────────────────────┘
+```
+
+- **`src/config/`**: Centralized configuration loader; reads environment variables and config files once.
+- **`src/providers/`**: Uniform provider interface (`LLMProvider`) supporting Ollama, OpenAI-compatible backends, and offline mock clients.
+- **`src/models/`**: Dynamic model discovery from provider APIs, technical capability detection, and memory-aware model routing.
+- **`src/hardware/`**: Device fact inspector reporting CPU, RAM, and GPU VRAM without hardcoding model decisions.
+- **`src/cli/commands/`**: Pluggable slash command registry (`/model`, `/models`, `/state`, `/tools`).
+
+---
+
+## 🧪 Comprehensive Unit Test Suite
+
+The project includes an offline unit test harness powered by Bun's built-in test runner:
+
+```bash
+# Run all unit tests
+bun test
+
+# Run tests in watch mode
+bun run test:watch
+```
+
+The test suite covers:
+- **State Machine Lifecycle**: Transition rules, history tracking, reset.
+- **Permission Evaluator**: Globstar matching, sensitive file protection, command substring checks.
+- **Tool Execution & Sandboxing**: File discovery, mathematical evaluation, code injection blocking.
+- **Context Engine**: Ast symbol extraction and proactive token history compaction.
+- **Provider & Model Router**: Capability detection (vision/reasoning), VRAM estimation, offline provider streaming.
+- **Command Registry Plugins**: Slash command dispatch, `/model auto`, and `/models --refresh`.
 
 ---
 
