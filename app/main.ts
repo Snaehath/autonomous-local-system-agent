@@ -56,6 +56,23 @@ async function runCliMode(
   );
 
   if (actualPrompt.startsWith("/")) {
+    const { defaultCommandRegistry } = await import("../src/cli/commands/index.ts");
+    if (defaultCommandRegistry.canHandle(actualPrompt)) {
+      const { getModelRuntime } = await import("../src/runtime/model-runtime.ts");
+      const modelRuntime = getModelRuntime();
+      if (modelRuntime.listModels().length === 0) {
+        await modelRuntime.initialize();
+      }
+      await defaultCommandRegistry.execute(actualPrompt, {
+        modelRuntime,
+        sessionFile,
+        history,
+        stdout: (text) => process.stdout.write(text),
+        stderr: (text) => process.stderr.write(text),
+      });
+      return;
+    }
+
     const [cmd, ...rest] = actualPrompt.split(/\s+/);
     const cmdName = cmd.slice(1).toLowerCase();
     const customCommands = loadAllCommands();
@@ -177,6 +194,9 @@ async function main() {
   if (args.includes("--models") || args.includes("--list-models")) {
     const { getModelRuntime } = await import("../src/runtime/model-runtime.ts");
     const runtime = getModelRuntime();
+    if (runtime.listModels().length === 0) {
+      await runtime.initialize();
+    }
     const models = runtime.listModels();
     const active = runtime.resolveModel();
     console.log("Discovered AI Models:\n" + "─".repeat(68));
