@@ -43,6 +43,7 @@ import {
   executeTool,
 } from "./tool-dispatcher.ts";
 import { dbManager } from "./connectors/db-manager.ts";
+import { getModelRuntime } from "../src/runtime/model-runtime.ts";
 
 // Constants
 const PLACEHOLDER_RE =
@@ -535,10 +536,22 @@ export async function runAgentMode(
   if (!apiKey) throw new Error("OPENROUTER_API_KEY is not set");
 
   const llm = getLlmClient();
-  const model = process.env.MODEL ?? "granite4.2:3b";
+  const modelRuntime = getModelRuntime();
+  if (modelRuntime.listModels().length === 0) {
+    await modelRuntime.initialize();
+  }
+
+  const rawModel = process.env.MODEL || "auto";
+  const hasImages = Boolean(imagePaths && imagePaths.length > 0);
+  const resolvedModelMetadata =
+    rawModel === "auto"
+      ? modelRuntime.resolveModel({ requiresVision: hasImages })
+      : (modelRuntime.registry.get(rawModel) || modelRuntime.resolveModel({ requiresVision: hasImages }));
+
+  const model = resolvedModelMetadata?.id || (rawModel !== "auto" ? rawModel : "granite4.2:3b");
   const modelInfo = resolveModel(model);
   const agentName =
-    modelInfo.name || process.env.AGENT_NAME || "Autonomous Local System Agent";
+    modelInfo.name || resolvedModelMetadata?.displayName || process.env.AGENT_NAME || "Autonomous Local System Agent";
 
   // Discover and merge MCP tools
   const mcpClients = await getMcpClients();

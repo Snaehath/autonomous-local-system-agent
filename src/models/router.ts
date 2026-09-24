@@ -18,12 +18,17 @@ export class ModelRouter {
       throw new ModelNotFoundError("No models registered or discovered in registry", []);
     }
 
-    // 1. Explicit user override takes top priority
-    const explicitChoice = req.userSpecifiedModel || (this.config.runtime.modelSelection === "pinned" ? this.config.runtime.pinnedModelId : undefined);
-    if (explicitChoice && explicitChoice !== "auto") {
-      const match = this.registry.get(explicitChoice);
+    // 1. Explicit user request (e.g. CLI flag or /model command) takes top priority
+    if (req.userSpecifiedModel && req.userSpecifiedModel !== "auto") {
+      const match = this.registry.get(req.userSpecifiedModel);
       if (match) return match;
-      throw new ModelNotFoundError(explicitChoice, allModels.map((m) => m.id));
+      throw new ModelNotFoundError(req.userSpecifiedModel, allModels.map((m) => m.id));
+    }
+
+    // Check pinned model from config; if installed, use it; otherwise fallback to auto-selection
+    if (this.config.runtime.modelSelection === "pinned" && this.config.runtime.pinnedModelId) {
+      const pinnedMatch = this.registry.get(this.config.runtime.pinnedModelId);
+      if (pinnedMatch) return pinnedMatch;
     }
 
     // 2. Filter by required technical capabilities

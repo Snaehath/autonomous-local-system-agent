@@ -33,6 +33,8 @@ import { stateMachine } from "./state-machine.ts";
 import { evaluatorEngine } from "./evaluators.ts";
 import { dbManager } from "./connectors/db-manager.ts";
 import { executeToolsAvailable } from "./tool-discovery.ts";
+import { defaultCommandRegistry, type CommandContext } from "../src/cli/commands/index.ts";
+import { getModelRuntime } from "../src/runtime/model-runtime.ts";
 
 // ANSI terminal colors
 export const colors = {
@@ -245,8 +247,27 @@ export async function runReplMode(options: {
       continue;
     }
 
-    // Slash command handling
+    // Slash command handling via CommandRegistry plugin system
     if (input.startsWith("/")) {
+      const modelRuntime = getModelRuntime();
+      if (modelRuntime.listModels().length === 0) {
+        await modelRuntime.initialize();
+      }
+
+      const cmdContext: CommandContext = {
+        modelRuntime,
+        sessionFile: currentSessionFile,
+        history,
+        stdout: (text) => process.stdout.write(text),
+        stderr: (text) => process.stderr.write(text),
+      };
+
+      if (defaultCommandRegistry.canHandle(input)) {
+        await defaultCommandRegistry.execute(input, cmdContext);
+        ask();
+        continue;
+      }
+
       const [cmd, ...rest] = input.split(/\s+/);
       switch (cmd) {
         case "/exit":
