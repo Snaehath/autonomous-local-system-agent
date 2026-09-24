@@ -1,5 +1,6 @@
-# Dependencies
+# Dependencies & Build
 node_modules/
+dist/
 tests/
 .github/
 

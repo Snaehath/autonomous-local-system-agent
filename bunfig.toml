@@ -1,0 +1,3 @@
+[test]
+# Baseline coverage thresholds for core test suite
+coverageThreshold = 0.45

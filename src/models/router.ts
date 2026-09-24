@@ -33,6 +33,13 @@ export class ModelRouter {
 
     const candidateEvaluations: ModelCandidateEvaluation[] = [];
 
+    const requirements = {
+      vision: !!req.requiresVision,
+      tools: !!req.requiresTools,
+      thinking: !!req.requiresReasoning,
+      minContextTokens: req.minContextTokens,
+    };
+
     // 1. Explicit user request (e.g. CLI flag or /model command) takes top priority
     if (req.userSpecifiedModel && req.userSpecifiedModel !== "auto") {
       const match = this.registry.get(req.userSpecifiedModel);
@@ -40,9 +47,12 @@ export class ModelRouter {
         this.lastTrace = {
           timestamp: Date.now(),
           strategy: "explicit-user-override",
+          requirements,
           taskRequirements: req,
           candidates: [{ modelId: match.id, displayName: match.displayName, accepted: true, reasons: ["Explicit user selection"] }],
+          selectedModel: match.id,
           selectedModelId: match.id,
+          reason: `Explicitly chosen by user: ${req.userSpecifiedModel}`,
           selectionReason: `Explicitly chosen by user: ${req.userSpecifiedModel}`,
         };
         return match;
@@ -57,9 +67,12 @@ export class ModelRouter {
         this.lastTrace = {
           timestamp: Date.now(),
           strategy: "pinned-configuration",
+          requirements,
           taskRequirements: req,
           candidates: [{ modelId: pinnedMatch.id, displayName: pinnedMatch.displayName, accepted: true, reasons: ["Pinned in configuration"] }],
+          selectedModel: pinnedMatch.id,
           selectedModelId: pinnedMatch.id,
+          reason: `Configured as pinned model in settings`,
           selectionReason: `Configured as pinned model in settings`,
         };
         return pinnedMatch;
@@ -184,9 +197,12 @@ export class ModelRouter {
     this.lastTrace = {
       timestamp: Date.now(),
       strategy,
+      requirements,
       taskRequirements: req,
       candidates: candidateEvaluations,
+      selectedModel: selected.id,
       selectedModelId: selected.id,
+      reason: `Optimal candidate under strategy '${strategy}' matching hardware and capability requirements`,
       selectionReason: `Optimal candidate under strategy '${strategy}' matching hardware and capability requirements`,
     };
 

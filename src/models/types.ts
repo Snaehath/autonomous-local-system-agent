@@ -48,6 +48,12 @@ export interface ModelCandidateEvaluation {
 export interface ModelSelectionTrace {
   timestamp: number;
   strategy: string;
+  requirements: {
+    vision: boolean;
+    tools: boolean;
+    thinking: boolean;
+    minContextTokens?: number;
+  };
   taskRequirements: {
     requiresVision?: boolean;
     requiresTools?: boolean;
@@ -55,6 +61,9 @@ export interface ModelSelectionTrace {
     minContextTokens?: number;
   };
   candidates: ModelCandidateEvaluation[];
+  selectedModel?: string;
   selectedModelId: string;
+  reason: string;
   selectionReason: string;
 }
+

@@ -6,8 +6,9 @@
     "dev": "bun run app/main.ts",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "typecheck": "tsc --noEmit",
-    "check": "bun run typecheck && bun test",
+    "typecheck": "bunx tsc --noEmit",
+    "build": "bun build app/main.ts --target bun --outfile dist/agent.js",
+    "check": "bun run typecheck && bun test && bun run build",
     "coverage": "bun test --coverage"
   },
   "dependencies": {
