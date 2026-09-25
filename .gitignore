@@ -3,6 +3,7 @@ node_modules/
 dist/
 tests/
 .github/
+evals/
 
 # Environment variables & secrets
 .env

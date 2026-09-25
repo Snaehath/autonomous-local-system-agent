@@ -9,7 +9,9 @@
     "typecheck": "bunx tsc --noEmit",
     "build": "bun build app/main.ts --target bun --outfile dist/agent.js",
     "check": "bun run typecheck && bun test && bun run build",
-    "coverage": "bun test --coverage"
+    "coverage": "bun test --coverage",
+    "eval": "bun run evals/harness.ts --live",
+    "eval:mock": "bun run evals/harness.ts --mock"
   },
   "dependencies": {
     "openai": "^6.16.0"
