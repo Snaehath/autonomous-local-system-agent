@@ -29,6 +29,7 @@ import {
 import { lspService } from "./lsp-service.ts";
 import { performWebSearch, formatSearchResults } from "./web-search.ts";
 import { DB_TOOLS, executeDbTool, isDbTool } from "./connectors/db-tools.ts";
+import { validatePathSafety, validateCommandSafety } from "./guardrails.ts";
 
 export interface ToolExecutionContext {
   sessionId: string;
@@ -774,6 +775,38 @@ export async function executeTool(
 ): Promise<ToolExecutionOutput> {
   let result: string;
   let actionSummary: string | undefined;
+
+  // Security Boundary 1: Filesystem path confinement
+  const filesystemTools = new Set([
+    "Read", "Write", "Delete", "DeleteFile", "RemoveFile", "Edit",
+    "Glob", "Grep", "Find", "Tree", "ExtractSymbols", "SummarizeFile",
+    "ContextExtract", "SummarizeDiff",
+  ]);
+
+  if (filesystemTools.has(toolName) && filePath) {
+    const pathCheck = validatePathSafety(filePath);
+    if (!pathCheck.safe) {
+      return {
+        result: `Error: Security Violation: Access to path "${filePath}" blocked. ${pathCheck.reason}`,
+        actionSummary: `Blocked access to ${filePath}`,
+      };
+    }
+  }
+
+  // Security Boundary 2: Shell command safety
+  if (toolName === "Bash") {
+    let rawCommand = args.command ?? "";
+    if (typeof rawCommand === "object" && rawCommand !== null) {
+      rawCommand = (rawCommand as any).command ?? (rawCommand as any).cmd ?? String(rawCommand);
+    }
+    const cmdCheck = validateCommandSafety(String(rawCommand));
+    if (!cmdCheck.safe) {
+      return {
+        result: `Error: Security Violation: Execution of command "${rawCommand}" blocked. ${cmdCheck.reason}`,
+        actionSummary: `Blocked command: ${rawCommand}`,
+      };
+    }
+  }
 
   if (isDbTool(toolName)) {
     result = await executeDbTool(toolName, args);

@@ -33,19 +33,19 @@ const DANGEROUS_COMMAND_PATTERNS: Array<{ regex: RegExp; reason: string }> = [
 // Sensitive path blocks (system keys, cloud credentials, root directories)
 const SENSITIVE_PATH_PATTERNS: Array<{ regex: RegExp; reason: string }> = [
   {
-    regex: /[\\/]\.ssh[\\/](id_rsa|id_ecdsa|id_ed25519|known_hosts)/i,
+    regex: /(?:^|[\\/])\.ssh[\\/](id_rsa|id_ecdsa|id_ed25519|known_hosts)/i,
     reason: "Access to private SSH keys is blocked for security.",
   },
   {
-    regex: /[\\/]\.aws[\\/](credentials|config)/i,
+    regex: /(?:^|[\\/])\.aws[\\/](credentials|config)/i,
     reason: "Access to AWS cloud credentials is blocked for security.",
   },
   {
-    regex: /^[A-Za-z]:\\(?:Windows|Windows\\System32|Boot|pagefile\.sys)/i,
+    regex: /(?:^|[\\/])[A-Za-z]:[\\/](?:Windows|Windows[\\/]System32|Boot|pagefile\.sys)/i,
     reason: "Access to Windows System directory is blocked.",
   },
   {
-    regex: /^\/(?:etc\/(?:passwd|shadow|sudoers)|boot|proc|sys)\b/i,
+    regex: /(?:^|[\\/])(?:etc[\\/](?:passwd|shadow|sudoers)|boot|proc|sys)\b/i,
     reason: "Access to critical Unix root directories is blocked.",
   },
 ];
@@ -58,15 +58,83 @@ const SECRET_PATTERNS: RegExp[] = [
   /-----BEGIN\s+(?:RSA|OPENSSH|EC|DSA)?\s*PRIVATE\s+KEY-----[\s\S]*?-----END\s+(?:RSA|OPENSSH|EC|DSA)?\s*PRIVATE\s+KEY-----/g,
 ];
 
+// Check if a path is strictly contained within the workspace root
+export function isPathInsideWorkspace(
+  targetPath: string,
+  rootDir: string = process.cwd(),
+): { safe: boolean; reason?: string } {
+  if (!targetPath) return { safe: true };
+
+  // 1. Decode URI encoding to neutralize %2e%2e traversal evasion
+  let decoded = targetPath;
+  try {
+    decoded = decodeURIComponent(targetPath);
+  } catch {
+    // If malformed URI, preserve original string
+  }
+
+  // 2. Block UNC paths (e.g. \\server\share) and Windows device namespaces (\\?\...)
+  if (/^[\\/]{2}/.test(decoded) || /^\\\\[.?]\\[a-z0-9_]+/i.test(decoded)) {
+    return { safe: false, reason: "UNC paths and device namespaces are not permitted." };
+  }
+
+  // 3. Resolve path against workspace root
+  const resolvedRoot = path.resolve(rootDir);
+  const resolvedTarget = path.resolve(resolvedRoot, decoded);
+
+  const rootLower = resolvedRoot.toLowerCase();
+  const targetLower = resolvedTarget.toLowerCase();
+
+  // Root itself is valid
+  if (targetLower === rootLower) return { safe: true };
+
+  // Must reside strictly within root boundary with path separator
+  const rootPrefix = rootLower.endsWith(path.sep) ? rootLower : rootLower + path.sep;
+  if (!targetLower.startsWith(rootPrefix)) {
+    return {
+      safe: false,
+      reason: `Path "${targetPath}" resolves outside authorized workspace root (${resolvedRoot}).`,
+    };
+  }
+
+  // 4. Check for symlink breakout if path exists on disk
+  try {
+    const fs = require("node:fs");
+    if (fs.existsSync(resolvedTarget)) {
+      const realTarget = fs.realpathSync(resolvedTarget).toLowerCase();
+      if (!realTarget.startsWith(rootPrefix) && realTarget !== rootLower) {
+        return {
+          safe: false,
+          reason: `Symlink target "${realTarget}" escapes authorized workspace boundary.`,
+        };
+      }
+    }
+  } catch {
+    // If realpath cannot be resolved, proceed with static path check
+  }
+
+  return { safe: true };
+}
+
 // Check if a file path is safe to access
-export function validatePathSafety(filePath: string): {
+export function validatePathSafety(
+  filePath: string,
+  rootDir: string = process.cwd(),
+): {
   safe: boolean;
   reason?: string;
 } {
   if (!filePath) return { safe: true };
 
+  // 1. Enforce strict workspace confinement
+  const workspaceCheck = isPathInsideWorkspace(filePath, rootDir);
+  if (!workspaceCheck.safe) {
+    return workspaceCheck;
+  }
+
   const normalized = path.normalize(filePath);
 
+  // 2. Enforce sensitive pattern filters
   for (const p of SENSITIVE_PATH_PATTERNS) {
     if (p.regex.test(normalized)) {
       return { safe: false, reason: p.reason };
@@ -85,14 +153,48 @@ export function validateCommandSafety(command: string): {
 
   const trimmed = command.trim();
 
-  // Check destructive command patterns
+  // 1. Check destructive command patterns
   for (const p of DANGEROUS_COMMAND_PATTERNS) {
     if (p.regex.test(trimmed)) {
       return { safe: false, reason: p.reason };
     }
   }
 
-  // Check commands targeting sensitive keys / credentials
+  // 2. Check for directory traversal patterns in shell command arguments
+  if (
+    /(?:\.\.[/\\]){2,}/.test(trimmed) ||
+    /%2e%2e/i.test(trimmed) ||
+    /\b(?:cd|dir|ls|cat|type|del|rm)\s+.*(?:\.\.[/\\])+/i.test(trimmed)
+  ) {
+    return {
+      safe: false,
+      reason: "Command attempts directory traversal out of authorized workspace.",
+    };
+  }
+
+  // 3. Check for absolute paths targeting system root directories
+  if (
+    /(?:^|[\s"'])[A-Za-z]:[/\\](?:Windows|Program Files|Users|System32)\b/i.test(trimmed) ||
+    /(?:^|[\s"'])\/(?:etc|proc|sys|root|boot|var|usr)\b/i.test(trimmed)
+  ) {
+    return {
+      safe: false,
+      reason: "Command targets restricted operating system directories.",
+    };
+  }
+
+  // 4. Check for unauthorized arbitrary download-and-execute commands
+  if (
+    /\b(?:curl|wget)\b.*\|\s*(?:sh|bash|powershell|cmd)\b/i.test(trimmed) ||
+    /\b(?:Invoke-Expression|IEX)\b.*(?:DownloadString|Net\.WebClient)/i.test(trimmed)
+  ) {
+    return {
+      safe: false,
+      reason: "Arbitrary download and execute commands are prohibited by security policy.",
+    };
+  }
+
+  // 5. Check commands targeting sensitive keys / credentials
   for (const sp of SENSITIVE_PATH_PATTERNS) {
     if (sp.regex.test(trimmed)) {
       return {
